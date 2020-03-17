@@ -1,7 +1,6 @@
 package org.vourhey.kotlinwebserver
 
 import android.content.Context
-import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -14,17 +13,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Log.i("MainActivity", "Preinit")
         setContentView(R.layout.activity_main)
-
-
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.i("MainActivity", "Server is stopped")
-
-    }
-
-
 
     companion object {
 

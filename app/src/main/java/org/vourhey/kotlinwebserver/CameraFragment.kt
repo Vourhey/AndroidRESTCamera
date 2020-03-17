@@ -1,11 +1,8 @@
 package org.vourhey.kotlinwebserver
 
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.WIFI_SERVICE
-import android.content.Intent
-import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -31,7 +28,6 @@ import androidx.camera.view.PreviewView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.net.toFile
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.Navigation
 import java.io.File
 import java.text.SimpleDateFormat
@@ -44,10 +40,6 @@ import kotlin.math.min
 
 const val ANIMATION_FAST_MILLIS = 50L
 const val ANIMATION_SLOW_MILLIS = 100L
-
-//const val TAKE_PICTURE_ACTION = "com.vourhey.kotlinwebserver.take_picture_action"
-//const val TAKE_PICTURE_EXTRA = "com.vourhey.kotlinwebserver.take_picture_extra"
-//const val TAKE_PICTURE_VALUE = "com.vourhey.kotlinwebserver.shoot"
 
 const val TAKE_PICTURE_ACTION = 1213
 const val TAKE_PICTURE_RESULT = 1214
@@ -72,7 +64,7 @@ class CameraFragment : Fragment() {
     private lateinit var viewFinder: PreviewView
     private lateinit var outputDirectory: File
     private lateinit var appNanoHTTPD: AppNanoHTTPD
-    //private lateinit var broadcastManager: LocalBroadcastManager
+
     private val mHandler : Handler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
             when(msg.what) {
@@ -95,7 +87,7 @@ class CameraFragment : Fragment() {
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
     private var imageAnalyzer: ImageAnalysis? = null
-    private var camera: androidx.camera.core.Camera? = null
+    private var camera: Camera? = null
 
     /** Blocking camera operations are performed using this executor */
     private lateinit var cameraExecutor: ExecutorService
@@ -103,19 +95,6 @@ class CameraFragment : Fragment() {
     private val displayManager by lazy {
         requireContext().getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     }
-
-//    private val takePictureReceiver = object : BroadcastReceiver() {
-//        override fun onReceive(context: Context, intent: Intent) {
-//            when (intent.getStringExtra(TAKE_PICTURE_EXTRA)) {
-//                TAKE_PICTURE_VALUE -> {
-//                    val shutter = container.findViewById<ImageButton>(R.id.camera_capture_button)
-//                    shutter.simulateClick()
-//                }
-//            }
-//        }
-//    }
-
-
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -148,14 +127,13 @@ class CameraFragment : Fragment() {
         super.onResume()
         // Make sure that all permissions are still present, since the
         // user could have removed them while the app was in paused state.
+        if (!Permissions.hasPermissions(requireContext())) {
+            Navigation.findNavController(requireActivity(), R.id.fragment_container).navigate(R.id.action_camera_fragment_to_permissions)
+        }
+
         Log.i("CameraFragmetn", appNanoHTTPD.isAlive.toString())
         if(!appNanoHTTPD.isAlive) {
             appNanoHTTPD.start()
-        }
-
-
-        if (!Permissions.hasPermissions(requireContext())) {
-            Navigation.findNavController(requireActivity(), R.id.fragment_container).navigate(R.id.action_camera_fragment_to_permissions)
         }
     }
 
@@ -174,7 +152,6 @@ class CameraFragment : Fragment() {
         appNanoHTTPD.stop()
 
         // Unregister the broadcast receivers and listeners
-        //broadcastManager.unregisterReceiver(takePictureReceiver)
         displayManager.unregisterDisplayListener(displayListener)
     }
 
@@ -192,24 +169,13 @@ class CameraFragment : Fragment() {
         // Initialize our background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        //broadcastManager = LocalBroadcastManager.getInstance(view.context)
-
-        // Set up the intent filter that will receive events from our main activity
-        //val filter = IntentFilter().apply { addAction(TAKE_PICTURE_ACTION) }
-        //broadcastManager.registerReceiver(takePictureReceiver, filter)
-
         // Every time the orientation of device changes, update rotation for use cases
         displayManager.registerDisplayListener(displayListener, null)
 
         // Determine the output directory
         outputDirectory = MainActivity.getOutputDirectory(requireContext())
 
-        appNanoHTTPD = getIpAccess(view)?.let { AppNanoHTTPD(it, 31333, mHandler) }!!
-//        try {
-//            appNanoHTTPD.start()
-//        } catch (e: Exception) {
-//            Log.i("MainActivity", e.toString())
-//        }
+        appNanoHTTPD = getIpAccess()?.let { AppNanoHTTPD(it, 31333, mHandler) }!!
 
         // Wait for the views to be properly laid out
         viewFinder.post {
@@ -225,14 +191,9 @@ class CameraFragment : Fragment() {
         }
     }
 
-    private fun takePictureCallback() {
-        Log.i("takePictureCallback", "Taking picture")
-        val shutter = container.findViewById<ImageButton>(R.id.camera_capture_button)
-        shutter.simulateClick()
-    }
 
-    private fun getIpAccess(view: View): String? {
-        val wifiManager = activity!!.getSystemService(WIFI_SERVICE) as WifiManager
+    private fun getIpAccess(): String? {
+        val wifiManager = activity!!.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val ipAddress = wifiManager.connectionInfo.ipAddress
         val formatedIpAddress = String.format("%d.%d.%d.%d", ipAddress and 0xff, ipAddress shr 8 and 0xff, ipAddress shr 16 and 0xff, ipAddress shr 24 and 0xff)
         Log.i("getIpAccess", "http://$formatedIpAddress")
@@ -280,24 +241,6 @@ class CameraFragment : Fragment() {
                 // during the lifecycle of this use case
                 .setTargetRotation(rotation)
                 .build()
-
-            // ImageAnalysis
-//            imageAnalyzer = ImageAnalysis.Builder()
-//                // We request aspect ratio but no resolution
-//                .setTargetAspectRatio(screenAspectRatio)
-//                // Set initial target rotation, we will have to call this again if rotation changes
-//                // during the lifecycle of this use case
-//                .setTargetRotation(rotation)
-//                .build()
-//                // The analyzer can then be assigned to the instance
-//                .also {
-//                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
-//                        // Values returned from our analyzer are passed to the attached listener
-//                        // We log image analysis results here - you should do something useful
-//                        // instead!
-//                        Log.d(TAG, "Average luminosity: $luma")
-//                    })
-//                }
 
             // Must unbind the use-cases before rebinding them
             cameraProvider.unbindAll()
@@ -409,17 +352,6 @@ class CameraFragment : Fragment() {
             // Re-bind use cases to update selected camera
             bindCameraUseCases()
         }
-
-        // Listener for button used to view the most recent photo
-//        controls.findViewById<ImageButton>(R.id.photo_view_button).setOnClickListener {
-//            // Only navigate when the gallery has photos
-//            if (true == outputDirectory.listFiles()?.isNotEmpty()) {
-//                Navigation.findNavController(
-//                    requireActivity(), R.id.fragment_container
-//                ).navigate(R.id.CameraFragmentDirections
-//                    .actionCameraToGallery(outputDirectory.absolutePath))
-//            }
-//        }
     }
 
     companion object {

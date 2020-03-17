@@ -4,7 +4,7 @@ import android.os.Message
 import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import android.os.Handler
-import android.os.Looper
+import java.io.FileInputStream
 
 class AppNanoHTTPD : NanoHTTPD {
 
@@ -35,13 +35,15 @@ class AppNanoHTTPD : NanoHTTPD {
             Thread.sleep(1000)
         }
 
-        var toSend = "Hi Vadim! $myResult"
+        Log.i("Server filepath", myResult!!.substringAfter("file://"))
+
+        val fis = FileInputStream(myResult!!.substringAfter("file://"))
+
+        val mimeType = getMimeTypeForFile(myResult)
+
         isFinished = false
-        myResult = null
 
-        return newFixedLengthResponse(toSend)
+        return newChunkedResponse(Response.Status.OK, mimeType, fis)
     }
-
-
 
 }
