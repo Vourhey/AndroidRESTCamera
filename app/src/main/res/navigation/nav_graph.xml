@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/permissions">
+    <fragment
+        android:id="@+id/permissions"
+        android:name="org.vourhey.kotlinwebserver.Permissions"
+        android:label="fragment_permissions"
+        tools:layout="Permissions" >
+        <action
+            android:id="@+id/action_permissions_to_camera_fragment"
+            app:destination="@id/camera_fragment"
+            app:popUpTo="@id/permissions"
+            app:popUpToInclusive="true" />
+    </fragment>
+    <fragment
+        android:id="@+id/camera_fragment"
+        android:name="org.vourhey.kotlinwebserver.CameraFragment"
+        android:label="fragment_camera"
+        tools:layout="@layout/fragment_camera" >
+        <action
+            android:id="@+id/action_camera_fragment_to_permissions"
+            app:destination="@id/permissions"
+            app:popUpTo="@id/camera_fragment"
+            app:popUpToInclusive="true"/>
+    </fragment>
+</navigation>
